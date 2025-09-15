@@ -1,0 +1,310 @@
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #2c5890;
+    --background-color: #121212;
+    --card-bg: #1e1e1e;
+    --input-bg: #2b2b2b;
+    --text-color-light: #e0e0e0;
+    --text-color-dark: #f0f0f0;
+    --border-color: #444;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+body {
+    direction: rtl;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--background-color);
+    color: var(--text-color-light);
+}
+
+.background-animation {
+    display: none;
+}
+
+.container {
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 500px;
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+.box {
+    background-color: var(--card-bg);
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color);
+}
+
+.logo {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 1.4rem;
+    color: var(--text-color-dark);
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+.input-group {
+    text-align: right;
+    margin-bottom: 1rem;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+}
+
+.input-group input,
+.input-group textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    background-color: var(--input-bg);
+    color: var(--text-color-light);
+    transition: all 0.3s ease;
+}
+
+.input-group input:focus,
+.input-group textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+    outline: none;
+}
+
+.input-group textarea {
+    resize: vertical;
+}
+
+.cta-button {
+    width: 100%;
+    padding: 0.9rem;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.cta-button:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+}
+
+.link-section {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+}
+
+.link-section a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+.link-section a:hover {
+    color: var(--text-color-light);
+}
+
+/* AI Chat Specific Styles */
+.chat-container {
+    padding: 0;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 600px;
+}
+
+.chat-box {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    height: 85vh;
+    border: 1px solid var(--border-color);
+}
+
+.chat-header {
+    text-align: center;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.chat-header h1 {
+    font-size: 1.3rem;
+    margin-bottom: 0.2rem;
+    color: var(--primary-color);
+}
+
+.chat-header p {
+    color: var(--text-color-light);
+    font-style: italic;
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: #121212;
+    border-radius: 8px;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    direction: ltr;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-messages .message {
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    max-width: 80%;
+    line-height: 1.5;
+    animation: message-in 0.5s ease forwards;
+    word-wrap: break-word;
+}
+
+.chat-messages .user {
+    background-color: var(--primary-color);
+    color: white;
+    margin-right: auto;
+    text-align: left;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-messages .ai {
+    background-color: #333;
+    color: var(--text-color-light);
+    margin-left: auto;
+    text-align: right;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-messages .error {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.chat-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+.chat-input form {
+    display: flex;
+    flex-grow: 1;
+    gap: 0.5rem;
+}
+
+.chat-input input {
+    flex-grow: 1;
+    border-radius: 20px;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--input-bg);
+    color: var(--text-color-light);
+    border: 1px solid var(--border-color);
+}
+
+.chat-input .cta-button {
+    width: auto;
+    padding: 0.75rem 1rem;
+    border-radius: 50%;
+}
+
+.back-link {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes message-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        min-height: 100vh;
+        align-items: flex-start;
+    }
+    .box, .chat-box {
+        height: 100vh;
+        width: 100%;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 1rem;
+        border: none;
+    }
+    .container, .chat-container {
+        padding: 0;
+    }
+    .chat-messages {
+        border-radius: 0;
+    }
+    .chat-header {
+        text-align: center;
+    }
+}
+/* New styles for mhj ai profile info */
+.profile-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+#profile-pic {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+}
+
+.chat-header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0;
+}

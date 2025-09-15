@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<div id="loading-overlay">
+    <div class="loading-spinner"></div>
+</div>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة AI للطلاب | مبرمجين العرب</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="background-animation"></div>
+
+    <main class="ai-container">
+        <div class="ai-box">
+            <h1 class="logo">مساعد الطلاب الذكي</h1>
+            <p>اسأل عن أي شيء يتعلق بدراستك!</p>
+            <form id="aiForm">
+                <div class="input-group">
+                    <label for="user_prompt">سؤالك</label>
+                    <textarea id="user_prompt" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="cta-button">الحصول على إجابة</button>
+            </form>
+            <div class="ai-response-area" id="aiResponseArea">
+                <p>الإجابة ستظهر هنا...</p>
+            </div>
+            <p class="back-link">
+                <a href="/dashboard">العودة إلى لوحة التحكم</a>
+            </p>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='ai_tool.js') }}"></script>
+</body>
+</html>

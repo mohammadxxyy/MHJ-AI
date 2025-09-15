@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mhj ai | محادثة</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="background-animation"></div>
+
+    <main class="chat-container">
+        <div class="chat-box">
+            <div class="chat-header">
+                <div class="profile-info">
+                    <img id="profile-pic" src="{{ url_for('static', filename='placeholder.png') }}" alt="صورة الملف الشخصي">
+                    <h1 class="logo">mhj ai</h1>
+                </div>
+                <p>تحدث مع الذكاء الاصطناعي...</p>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                </div>
+            <form class="chat-input" id="chatForm">
+                <input type="text" id="userInput" placeholder="اكتب رسالتك..." required>
+                <button type="submit" class="cta-button">إرسال</button>
+            </form>
+            <p class="nav-links">
+                <a href="/info">معلومات</a>
+            </p>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatForm = document.getElementById('chatForm');
+            const userInput = document.getElementById('userInput');
+            const chatMessages = document.getElementById('chatMessages');
+
+            function createMessageElement(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(sender);
+                messageDiv.innerHTML = `<p>${text}</p>`;
+                return messageDiv;
+            }
+
+            async function sendMessage(prompt) {
+                const userMessage = createMessageElement(prompt, 'user');
+                chatMessages.appendChild(userMessage);
+                userInput.value = '';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                const loadingMessage = createMessageElement('الذكاء الاصطناعي يكتب...', 'ai');
+                loadingMessage.id = 'loading-message';
+                chatMessages.appendChild(loadingMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                try {
+                    const response = await fetch('/api/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ prompt: prompt })
+                    });
+
+                    const result = await response.json();
+                    
+                    loadingMessage.remove();
+
+                    if (response.ok) {
+                        const aiMessage = createMessageElement(result.response, 'ai');
+                        chatMessages.appendChild(aiMessage);
+                    } else {
+                        const errorMessage = createMessageElement(`خطأ: ${result.error}`, 'ai error');
+                        chatMessages.appendChild(errorMessage);
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    loadingMessage.remove();
+                    const errorMessage = createMessageElement('حدث خطأ في الاتصال بالخادم. حاول مرة أخرى.', 'ai error');
+                    chatMessages.appendChild(errorMessage);
+                }
+
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const prompt = userInput.value.trim();
+                if (prompt) {
+                    sendMessage(prompt);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
