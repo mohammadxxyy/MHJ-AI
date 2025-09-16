@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const username = usernameInput.value.trim();
             const password = passwordInput.value.trim();
 
-            // تحقق من أن حقول الإدخال ليست فارغة
             if (!username || !password) {
                 messageDiv.textContent = 'الرجاء إدخال اسم المستخدم وكلمة المرور.';
                 messageDiv.style.color = 'red';
@@ -31,10 +30,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    // تسجيل الدخول بنجاح، الانتقال إلى أداة الذكاء الاصطناعي
                     window.location.href = '/ai_tool';
                 } else {
-                    // عرض رسالة الخطأ من الخادم
                     messageDiv.textContent = data.message;
                     messageDiv.style.color = 'red';
                 }
