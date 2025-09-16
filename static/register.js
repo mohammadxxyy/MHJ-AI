@@ -7,13 +7,23 @@ document.addEventListener('DOMContentLoaded', function() {
             event.preventDefault();
 
             const usernameInput = registerForm.querySelector('#username');
+            const emailInput = registerForm.querySelector('#email');
             const passwordInput = registerForm.querySelector('#password');
 
             const username = usernameInput.value.trim();
+            const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
 
-            if (!username || !password) {
-                messageDiv.textContent = 'الرجاء إدخال اسم المستخدم وكلمة المرور.';
+            if (!username || !email || !password) {
+                messageDiv.textContent = 'الرجاء إدخال اسم المستخدم والبريد الإلكتروني وكلمة المرور.';
+                messageDiv.style.color = 'red';
+                return;
+            }
+
+            // تحقق من تنسيق البريد الإلكتروني
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                messageDiv.textContent = 'الرجاء إدخال بريد إلكتروني صحيح.';
                 messageDiv.style.color = 'red';
                 return;
             }
@@ -24,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, email, password })
                 });
 
                 const data = await response.json();

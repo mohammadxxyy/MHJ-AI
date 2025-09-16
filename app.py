@@ -22,6 +22,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL
         )
     ''')
@@ -77,6 +78,7 @@ def api_login():
 def api_register():
     data = request.json
     username = data.get('username')
+    email = data.get('email')
     password = data.get('password')
 
     conn = sqlite3.connect('database.db')
@@ -84,11 +86,11 @@ def api_register():
 
     try:
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
+        cursor.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', (username, email, hashed_password))
         conn.commit()
         return jsonify({'message': 'تم إنشاء الحساب بنجاح!'}), 201
     except sqlite3.IntegrityError:
-        return jsonify({'message': 'اسم المستخدم موجود بالفعل.'}), 409
+        return jsonify({'message': 'اسم المستخدم أو البريد الإلكتروني موجودان بالفعل.'}), 409
     finally:
         conn.close()
 
