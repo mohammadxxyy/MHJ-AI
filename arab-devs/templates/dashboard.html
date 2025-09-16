@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<div id="loading-overlay">
+    <div class="loading-spinner"></div>
+</div>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم | مبرمجين العرب</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="background-animation"></div>
+
+    <main class="dashboard-container">
+        <div class="dashboard-box">
+            <h1 class="logo">مرحباً بك في مبرمجين العرب</h1>
+            <p>أهلاً بك يا <strong id="username">مستخدم</strong>!</p>
+            <p>بريدك الإلكتروني هو: <span id="email-display"></span></p>
+            <a href="#" class="cta-button" id="logout-button">تسجيل الخروج</a>
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>

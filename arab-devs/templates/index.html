@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحتي الرئيسية</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>أهلاً بك في الصفحة الرئيسية!</h1>
+    <p>هذا مجرد اختبار للتأكد من أن الصفحة تعمل بشكل صحيح.</p>
+    <a href="{{ url_for('login_page') }}">انتقل إلى صفحة تسجيل الدخول</a>
+</body>
+</html>
