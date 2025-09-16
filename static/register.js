@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('An error occurred:', error);
                 messageDiv.textContent = 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.';
                 messageDiv.style.color = 'red';
+                
             }
         });
     }

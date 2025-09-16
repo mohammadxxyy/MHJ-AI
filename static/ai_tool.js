@@ -1,56 +1,60 @@
-// Function to show the loading overlay
-function showLoading() {
-    const overlay = document.getElementById('loading-overlay');
-    overlay.style.display = 'flex';
-    setTimeout(() => {
-        overlay.classList.add('visible');
-    }, 10);
-}
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.querySelector('#chat-form');
+    const chatBox = document.querySelector('#chat-box');
+    const promptInput = document.querySelector('#prompt-input');
 
-// Function to hide the loading overlay
-function hideLoading() {
-    const overlay = document.getElementById('loading-overlay');
-    overlay.classList.remove('visible');
-    setTimeout(() => {
-        overlay.style.display = 'none';
-    }, 500);
-}
+    if (chatForm) {
+        chatForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
 
-// Attach loading screen to all internal links
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('a[href^="/"]').forEach(link => {
-        link.addEventListener('click', () => {
-            showLoading();
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                return;
+            }
+
+            // عرض رسالة المستخدم
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'chat-message chat-user';
+            userMessageDiv.textContent = prompt;
+            chatBox.appendChild(userMessageDiv);
+
+            // عرض رسالة فارغة للرد من الذكاء الاصطناعي مع Loader
+            const aiMessageDiv = document.createElement('div');
+            aiMessageDiv.className = 'chat-message chat-ai';
+            aiMessageDiv.innerHTML = '<span class="loader"></span>';
+            chatBox.appendChild(aiMessageDiv);
+
+            // تمرير scroll إلى نهاية الدردشة
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            promptInput.value = '';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+
+                const data = await response.json();
+
+                // تحديث رسالة الذكاء الاصطناعي
+                if (response.ok) {
+                    aiMessageDiv.innerHTML = data.response;
+                } else {
+                    aiMessageDiv.textContent = data.message || 'حدث خطأ غير متوقع.';
+                }
+
+                // تمرير scroll إلى نهاية الدردشة بعد الرد
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+            } catch (error) {
+                console.error('Error generating response:', error);
+                aiMessageDiv.textContent = 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.';
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
         });
-    });
-});
-document.getElementById('aiForm').addEventListener('submit', async function(event) {
-    event.preventDefault();
-    
-    const userPrompt = document.getElementById('user_prompt').value;
-    const responseArea = document.getElementById('aiResponseArea');
-    
-    responseArea.innerHTML = '<p>الذكاء الاصطناعي يفكر... <span class="loading-dots"></span></p>';
-    
-    try {
-        const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ prompt: userPrompt })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            responseArea.innerHTML = `<p>${result.response}</p>`;
-        } else {
-            responseArea.innerHTML = `<p style="color: red;">خطأ: ${result.error}</p>`;
-        }
-        
-    } catch (error) {
-        console.error('Error:', error);
-        responseArea.innerHTML = `<p style="color: red;">حدث خطأ في الاتصال بالخادم. حاول مرة أخرى.</p>`;
     }
 });
