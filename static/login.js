@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (loginForm) {
         loginForm.addEventListener('submit', async function(event) {
-            event.preventDefault(); // منع إعادة تحميل الصفحة
+            event.preventDefault();
 
             const usernameInput = loginForm.querySelector('#username');
             const passwordInput = loginForm.querySelector('#password');

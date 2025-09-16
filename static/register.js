@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (registerForm) {
         registerForm.addEventListener('submit', async function(event) {
-            event.preventDefault(); // منع إعادة تحميل الصفحة
+            event.preventDefault();
 
             const usernameInput = registerForm.querySelector('#username');
             const passwordInput = registerForm.querySelector('#password');
