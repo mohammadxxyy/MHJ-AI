@@ -1,142 +1,118 @@
-import os
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 import hashlib
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import openai
+import os
 from dotenv import load_dotenv
 
-# قم بتحميل متغيرات البيئة من ملف .env
+# تحميل متغيرات البيئة من ملف .env
 load_dotenv()
 
-# تهيئة تطبيق Flask
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
+app.secret_key = os.getenv('SECRET_KEY')
 
-# قم بتكوين OpenAI API
-openai.api_key = os.environ.get("API_KEY")
+# إعداد مفتاح API الخاص بـ OpenAI
+openai.api_key = os.getenv('API_KEY')
 
-# تهيئة قاعدة البيانات
+# دالة لتهيئة قاعدة البيانات
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
+            username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL
         )
     ''')
     conn.commit()
     conn.close()
 
-# عند بدء التطبيق لأول مرة
-with app.app_context():
-    init_db()
-
-# مساعدة: توليد تجزئة لكلمة المرور (للاستخدام المحلي فقط)
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+# تهيئة قاعدة البيانات عند بدء التطبيق
+init_db()
 
 # مسار الصفحة الرئيسية
 @app.route('/')
-def home():
+def home_page():
     return render_template('index.html')
 
 # مسار صفحة تسجيل الدخول
-@app.route('/login', methods=['GET'])
+@app.route('/login')
 def login_page():
     return render_template('login.html')
 
-# مسار صفحة التسجيل
-@app.route('/register', methods=['GET'])
+# مسار صفحة إنشاء حساب
+@app.route('/register')
 def register_page():
     return render_template('register.html')
 
-# مسار أداة الذكاء الاصطناعي
-@app.route('/ai_tool', methods=['GET'])
-def ai_tool():
-    if 'username' in session:
-        return render_template('ai_tool.html')
-    return redirect(url_for('login_page'))
+# مسار صفحة أداة الذكاء الاصطناعي
+@app.route('/ai_tool')
+def ai_tool_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    return render_template('ai_tool.html')
 
-# مسار تسجيل المستخدمين
-@app.route('/api/register', methods=['POST'])
-def register_user():
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
-
-    if not username or not password:
-        return jsonify({"success": False, "message": "Username and password are required."}), 400
-
-    hashed_password = hash_password(password)
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
-        conn.commit()
-        return jsonify({"success": True, "message": "User registered successfully."}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({"success": False, "message": "Username already exists."}), 409
-    finally:
-        conn.close()
-
-# مسار تسجيل الدخول
+# مسار واجهة برمجة تطبيقات تسجيل الدخول
 @app.route('/api/login', methods=['POST'])
-def login_user():
+def api_login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
 
-    if not username or not password:
-        return jsonify({"success": False, "message": "Username and password are required."}), 400
-
-    hashed_password = hash_password(password)
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashed_password))
+    cursor.execute('SELECT id, password FROM users WHERE username = ?', (username,))
     user = cursor.fetchone()
     conn.close()
 
-    if user:
-        session['username'] = username
-        return jsonify({"success": True, "message": "Login successful."}), 200
+    if user and hashlib.sha256(password.encode()).hexdigest() == user[1]:
+        session['user_id'] = user[0]
+        return jsonify({'message': 'تم تسجيل الدخول بنجاح!'}), 200
     else:
-        return jsonify({"success": False, "message": "Invalid username or password."}), 401
+        return jsonify({'message': 'اسم المستخدم أو كلمة المرور غير صحيحة.'}), 401
 
-# مسار تسجيل الخروج
-@app.route('/api/logout')
-def logout_user():
-    session.pop('username', None)
-    return redirect(url_for('login_page'))
-
-# مسار لتوليد رد من الذكاء الاصطناعي
-@app.route('/api/generate', methods=['POST'])
-def generate_response():
-    if 'username' not in session:
-        return jsonify({"success": False, "message": "Unauthorized"}), 401
-
+# مسار واجهة برمجة تطبيقات إنشاء الحساب
+@app.route('/api/register', methods=['POST'])
+def api_register():
     data = request.json
-    user_message = data.get('message')
+    username = data.get('username')
+    password = data.get('password')
 
-    if not user_message:
-        return jsonify({"success": False, "message": "Message is required."}), 400
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
 
     try:
-        response = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": user_message}]
-        )
-        return jsonify({"success": True, "response": response.choices[0].message.content})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
+        conn.commit()
+        return jsonify({'message': 'تم إنشاء الحساب بنجاح!'}), 201
+    except sqlite3.IntegrityError:
+        return jsonify({'message': 'اسم المستخدم موجود بالفعل.'}), 409
+    finally:
+        conn.close()
 
-# مسار معلومات الموقع
-@app.route('/info')
-def info_page():
-    return render_template('info.html')
+# مسار واجهة برمجة تطبيقات توليد النص بالذكاء الاصطناعي
+@app.route('/api/generate', methods=['POST'])
+def api_generate():
+    if 'user_id' not in session:
+        return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
+    
+    data = request.json
+    prompt = data.get('prompt')
+
+    if not prompt:
+        return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
+
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            max_tokens=150
+        )
+        return jsonify({'response': response.choices[0].text.strip()}), 200
+    except Exception as e:
+        return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=os.getenv('PORT'))
