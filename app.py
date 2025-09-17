@@ -107,12 +107,13 @@ def api_generate():
         return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
 
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            max_tokens=150
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
         )
-        return jsonify({'response': response.choices[0].text.strip()}), 200
+        return jsonify({'response': response.choices[0].message.content.strip()}), 200
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
