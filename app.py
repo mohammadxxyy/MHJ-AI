@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 import hashlib
-import openai
 import os
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # تحميل متغيرات البيئة من ملف .env
 load_dotenv()
@@ -11,8 +11,8 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-# إعداد مفتاح API الخاص بـ OpenAI
-openai.api_key = os.getenv('API_KEY')
+# إعداد عميل OpenAI الجديد
+client = OpenAI(api_key=os.getenv('API_KEY'))
 
 # دالة لتهيئة قاعدة البيانات
 def init_db():
@@ -107,7 +107,7 @@ def api_generate():
         return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "user", "content": prompt}
