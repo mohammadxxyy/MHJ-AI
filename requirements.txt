@@ -1,7 +1,8 @@
 Flask
 gunicorn
 python-dotenv
-
+openai
 google-generativeai
 
 PyMuPDF
+
