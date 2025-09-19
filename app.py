@@ -2,8 +2,10 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import sqlite3
 import hashlib
 import os
+import uuid
 from dotenv import load_dotenv
 from openai import OpenAI
+import google.generativeai as genai
 
 # تحميل متغيرات البيئة من ملف .env
 load_dotenv()
@@ -12,7 +14,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
 # إعداد عميل OpenAI
-client = OpenAI(api_key=os.getenv("API_KEY"))
+openai_client = OpenAI(api_key=os.getenv("API_KEY"))
+
+# إعداد عميل Google Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 # دالة لتهيئة قاعدة البيانات
 def init_db():
@@ -23,7 +29,9 @@ def init_db():
             id INTEGER PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            is_verified INTEGER DEFAULT 0,
+            verification_token TEXT UNIQUE
         )
     ''')
     conn.commit()
@@ -67,13 +75,16 @@ def api_login():
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, password FROM users WHERE username = ?', (username,))
+    cursor.execute('SELECT id, password, is_verified FROM users WHERE username = ?', (username,))
     user = cursor.fetchone()
     conn.close()
 
     if user and hashlib.sha256(password.encode()).hexdigest() == user[1]:
-        session['user_id'] = user[0]
-        return jsonify({'message': 'تم تسجيل الدخول بنجاح!'}), 200
+        if user[2] == 1:
+            session['user_id'] = user[0]
+            return jsonify({'message': 'تم تسجيل الدخول بنجاح!'}), 200
+        else:
+            return jsonify({'message': 'حسابك غير مفعل. يرجى التحقق من بريدك الإلكتروني.'}), 401
     else:
         return jsonify({'message': 'اسم المستخدم أو كلمة المرور غير صحيحة.'}), 401
 
@@ -89,14 +100,31 @@ def api_register():
 
     try:
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        cursor.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', (username, email, hashed_password))
+        verification_token = str(uuid.uuid4())
+        cursor.execute('INSERT INTO users (username, email, password, is_verified, verification_token) VALUES (?, ?, ?, 0, ?)', (username, email, hashed_password, verification_token))
         conn.commit()
-        return jsonify({'message': 'تم إنشاء الحساب بنجاح!'}), 201
+        return jsonify({'message': 'تم إنشاء الحساب بنجاح. يرجى تفعيله.'}), 201
     except sqlite3.IntegrityError:
         return jsonify({'message': 'اسم المستخدم أو البريد الإلكتروني موجودان بالفعل.'}), 409
     finally:
         conn.close()
 
+# مسار جديد لتفعيل الحساب (لأغراض الاختبار)
+@app.route('/verify/<token>')
+def verify_account(token):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET is_verified = 1, verification_token = NULL WHERE verification_token = ?', (token,))
+    conn.commit()
+    rows_affected = cursor.rowcount
+    conn.close()
+    
+    if rows_affected > 0:
+        return "تم تفعيل حسابك بنجاح! يمكنك الآن تسجيل الدخول."
+    else:
+        return "رمز التفعيل غير صالح أو انتهت صلاحيته."
+
+# مسار واجهة برمجة تطبيقات توليد النص بالذكاء الاصطناعي
 @app.route('/api/generate', methods=['POST'])
 def api_generate():
     if 'user_id' not in session:
@@ -108,8 +136,9 @@ def api_generate():
     if not prompt:
         return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
 
+    # استخدام نموذج OpenAI
     try:
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "user", "content": prompt}
@@ -133,7 +162,7 @@ def api_summarize_book():
 
     try:
         prompt = f"قم بتلخيص هذا الكتاب بشكل موجز: {book_text}"
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "user", "content": prompt}
@@ -157,7 +186,7 @@ def api_create_test():
 
     try:
         prompt = f"بناءً على المحتوى التالي، قم بإنشاء اختبار يتكون من 5 أسئلة اختيار من متعدد مع الإجابات الصحيحة: {content}"
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "user", "content": prompt}
@@ -166,6 +195,37 @@ def api_create_test():
         return jsonify({'response': response.choices[0].message.content.strip()}), 200
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
+
+# مسار جديد يسمح بالاختيار بين النموذجين
+@app.route('/api/generate_multi', methods=['POST'])
+def api_generate_multi():
+    if 'user_id' not in session:
+        return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
+    
+    data = request.json
+    prompt = data.get('prompt')
+    model_choice = data.get('model_choice', 'openai') # الافتراضي هو openai
+
+    if not prompt:
+        return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
+
+    try:
+        if model_choice == 'openai':
+            response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            return jsonify({'response': response.choices[0].message.content.strip()}), 200
+        elif model_choice == 'gemini':
+            response = gemini_model.generate_content(prompt)
+            return jsonify({'response': response.text}), 200
+        else:
+            return jsonify({'message': 'خيار النموذج غير صالح.'}), 400
+    except Exception as e:
+        return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.getenv('PORT'))
