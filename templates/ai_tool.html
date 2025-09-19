@@ -42,6 +42,13 @@
                     <label for="prompt-input" class="form-label">أدخل مطالبتك للذكاء الاصطناعي:</label>
                     <textarea class="form-control" id="prompt-input" rows="5"></textarea>
                 </div>
+                <div class="mt-3">
+                    <label for="model-select" class="form-label">اختر النموذج:</label>
+                    <select id="model-select" class="form-select">
+                        <option value="openai">OpenAI (GPT-4o)</option>
+                        <option value="gemini">Google Gemini</option>
+                    </select>
+                </div>
                 <button id="generate-btn" class="btn btn-primary w-100 mt-3">توليد</button>
                 <div id="ai-response" class="response-box">
                     <p>الاستجابة ستظهر هنا...</p>
@@ -53,6 +60,8 @@
     <script>
         document.getElementById('generate-btn').addEventListener('click', function() {
             var prompt = document.getElementById('prompt-input').value;
+            var modelChoice = document.getElementById('model-select').value;
+
             if (prompt.trim() === '') {
                 alert('الرجاء إدخال نص.');
                 return;
@@ -60,12 +69,12 @@
 
             document.getElementById('ai-response').innerText = 'جاري التوليد...';
 
-            fetch('/api/generate', {
+            fetch('/api/generate_multi', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ prompt: prompt })
+                body: JSON.stringify({ prompt: prompt, model_choice: modelChoice })
             })
             .then(response => response.json())
             .then(data => {
