@@ -11,10 +11,11 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-# إعداد عميل Deepseek الجديد باستخدام base_url
+# إعداد عميل Groq الجديد باستخدام base_url
+# هذا يوجه الطلبات إلى Groq بدلاً من OpenAI
 client = OpenAI(
     api_key=os.getenv('API_KEY'),
-    base_url="https://api.deepseek.com/v1"
+    base_url="https://api.groq.com/openai/v1"
 )
 
 # دالة لتهيئة قاعدة البيانات
@@ -111,7 +112,7 @@ def api_generate():
 
     try:
         response = client.chat.completions.create(
-            model="deepseek-coder", # يمكنك استخدام "deepseek-chat" أيضًا
+            model="mixtral-8x7b-32768", # يمكنك استخدام "llama2-70b-4096" أيضًا
             messages=[
                 {"role": "user", "content": prompt}
             ]
