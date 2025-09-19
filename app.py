@@ -4,7 +4,6 @@ import hashlib
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-import fitz  # PyMuPDF
 
 # تحميل متغيرات البيئة من ملف .env
 load_dotenv()
@@ -167,45 +166,6 @@ def api_create_test():
         return jsonify({'response': response.choices[0].message.content.strip()}), 200
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
-
-# مسار جديد لرفع وتلخيص الملفات
-@app.route('/api/upload_and_summarize', methods=['POST'])
-def api_upload_and_summarize():
-    if 'user_id' not in session:
-        return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
-    
-    if 'file' not in request.files:
-        return jsonify({'message': 'لم يتم العثور على ملف في الطلب.'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'message': 'لم يتم اختيار ملف.'}), 400
-
-    if file:
-        file_path = os.path.join(app.root_path, file.filename)
-        file.save(file_path)
-        
-        try:
-            # قراءة النص من ملف PDF باستخدام PyMuPDF
-            doc = fitz.open(file_path)
-            file_text = ""
-            for page in doc:
-                file_text += page.get_text()
-            
-            # إرسال النص للتلخيص
-            prompt = f"قم بتلخيص المحتوى التالي: {file_text}"
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            os.remove(file_path) # حذف الملف بعد المعالجة
-            return jsonify({'response': response.choices[0].message.content.strip()}), 200
-        except Exception as e:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            return jsonify({'message': f'حدث خطأ في معالجة الملف أو طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.getenv('PORT'))
