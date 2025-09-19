@@ -112,7 +112,7 @@ def api_generate():
 
     try:
         response = client.chat.completions.create(
-            model="llama3-8b-8192", 
+            model="llama3-8b-4096", 
             messages=[
                 {"role": "user", "content": prompt}
             ]
