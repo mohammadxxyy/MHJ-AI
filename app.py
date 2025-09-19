@@ -3,7 +3,7 @@ import sqlite3
 import hashlib
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 
 # تحميل متغيرات البيئة من ملف .env
 load_dotenv()
@@ -11,11 +11,9 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-# إعداد عميل Groq الجديد باستخدام base_url
-client = OpenAI(
-    api_key=os.getenv('API_KEY'),
-    base_url="https://api.groq.com/openai/v1"
-)
+# إعداد عميل Google Gemini
+genai.configure(api_key=os.getenv("API_KEY"))
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 # دالة لتهيئة قاعدة البيانات
 def init_db():
@@ -102,7 +100,7 @@ def api_register():
 def api_generate():
     if 'user_id' not in session:
         return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
-    
+
     data = request.json
     prompt = data.get('prompt')
 
@@ -110,13 +108,8 @@ def api_generate():
         return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.1-405b-instruct", 
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return jsonify({'response': response.choices[0].message.content.strip()}), 200
+        response = model.generate_content(prompt)
+        return jsonify({'response': response.text}), 200
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
