@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة الطلاب - تطبيق الذكاء الاصطناعي</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Arial', sans-serif; text-align: right; direction: rtl; }
+        .container { max-width: 800px; margin-top: 50px; }
+        .card { border-radius: 15px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .card-header { background-color: #007bff; color: white; border-top-left-radius: 15px; border-top-right-radius: 15px; text-align: center; font-size: 1.5rem; }
+        .form-control { border-radius: 20px; padding: 10px 20px; }
+        .btn-primary { border-radius: 20px; background-color: #007bff; border-color: #007bff; }
+        .btn-primary:hover { background-color: #0056b3; border-color: #0056b3; }
+        .response-box { background-color: #e9ecef; padding: 20px; border-radius: 10px; min-height: 200px; margin-top: 20px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; }
+        .nav-link { font-weight: bold; }
+        .nav-link.active { color: #007bff !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-graduation-cap"></i> أدوات الطلاب
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs justify-content-center" id="myTab" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="summarize-tab" data-bs-toggle="tab" href="#summarize" role="tab" aria-controls="summarize" aria-selected="true">تلخيص النصوص</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="test-tab" data-bs-toggle="tab" href="#test" role="tab" aria-controls="test" aria-selected="false">إنشاء اختبار</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="upload-tab" data-bs-toggle="tab" href="#upload" role="tab" aria-controls="upload" aria-selected="false">رفع وتلخيص ملف</a>
+                    </li>
+                </ul>
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="summarize" role="tabpanel" aria-labelledby="summarize-tab">
+                        <div class="mb-3 mt-4">
+                            <label for="summarize-input" class="form-label">أدخل النص المراد تلخيصه:</label>
+                            <textarea class="form-control" id="summarize-input" rows="8"></textarea>
+                        </div>
+                        <button id="summarize-btn" class="btn btn-primary w-100">تلخيص</button>
+                    </div>
+
+                    <div class="tab-pane fade" id="test" role="tabpanel" aria-labelledby="test-tab">
+                        <div class="mb-3 mt-4">
+                            <label for="test-input" class="form-label">أدخل النص لإنشاء اختبار:</label>
+                            <textarea class="form-control" id="test-input" rows="8"></textarea>
+                        </div>
+                        <button id="test-btn" class="btn btn-primary w-100">إنشاء اختبار</button>
+                    </div>
+
+                    <div class="tab-pane fade" id="upload" role="tabpanel" aria-labelledby="upload-tab">
+                        <div class="mb-3 mt-4">
+                            <label for="upload-file" class="form-label">قم برفع ملف (PDF):</label>
+                            <input class="form-control" type="file" id="upload-file">
+                        </div>
+                        <button id="upload-btn" class="btn btn-primary w-100">رفع وتلخيص</button>
+                    </div>
+                </div>
+
+                <div id="ai-response" class="response-box mt-4">
+                    <p>النتائج ستظهر هنا...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('summarize-btn').addEventListener('click', function() {
+            var bookText = document.getElementById('summarize-input').value;
+            if (bookText.trim() === '') {
+                alert('الرجاء إدخال نص.');
+                return;
+            }
+            document.getElementById('ai-response').innerText = 'جاري تلخيص النص...';
+            fetch('/api/summarize_book', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ book_text: bookText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.response) {
+                    document.getElementById('ai-response').innerHTML = '<pre><code>' + data.response + '</code></pre>';
+                } else {
+                    document.getElementById('ai-response').innerText = data.message || 'حدث خطأ غير معروف.';
+                }
+            })
+            .catch(error => {
+                document.getElementById('ai-response').innerText = 'حدث خطأ في الاتصال بالخادم.';
+                console.error('Error:', error);
+            });
+        });
+
+        document.getElementById('test-btn').addEventListener('click', function() {
+            var content = document.getElementById('test-input').value;
+            if (content.trim() === '') {
+                alert('الرجاء إدخال نص لإنشاء الاختبار.');
+                return;
+            }
+            document.getElementById('ai-response').innerText = 'جاري إنشاء الاختبار...';
+            fetch('/api/create_test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.response) {
+                    document.getElementById('ai-response').innerHTML = '<pre><code>' + data.response + '</code></pre>';
+                } else {
+                    document.getElementById('ai-response').innerText = data.message || 'حدث خطأ غير معروف.';
+                }
+            })
+            .catch(error => {
+                document.getElementById('ai-response').innerText = 'حدث خطأ في الاتصال بالخادم.';
+                console.error('Error:', error);
+            });
+        });
+
+        document.getElementById('upload-btn').addEventListener('click', function() {
+            var fileInput = document.getElementById('upload-file');
+            var file = fileInput.files[0];
+            if (!file) {
+                alert('الرجاء اختيار ملف.');
+                return;
+            }
+            if (file.type !== 'application/pdf') {
+                alert('الرجاء رفع ملف PDF فقط.');
+                return;
+            }
+            document.getElementById('ai-response').innerText = 'جاري رفع وتلخيص الملف...';
+            var formData = new FormData();
+            formData.append('file', file);
+            fetch('/api/upload_and_summarize', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.response) {
+                    document.getElementById('ai-response').innerHTML = '<pre><code>' + data.response + '</code></pre>';
+                } else {
+                    document.getElementById('ai-response').innerText = data.message || 'حدث خطأ غير معروف.';
+                }
+            })
+            .catch(error => {
+                document.getElementById('ai-response').innerText = 'حدث خطأ في الاتصال بالخادم.';
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
