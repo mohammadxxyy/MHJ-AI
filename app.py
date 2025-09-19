@@ -3,7 +3,8 @@ import sqlite3
 import hashlib
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
+from openai import OpenAI
+import fitz  # PyMuPDF
 
 # تحميل متغيرات البيئة من ملف .env
 load_dotenv()
@@ -11,9 +12,8 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-# إعداد عميل Google Gemini
-genai.configure(api_key=os.getenv("API_KEY"))
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+# إعداد عميل OpenAI
+client = OpenAI(api_key=os.getenv("API_KEY"))
 
 # دالة لتهيئة قاعدة البيانات
 def init_db():
@@ -33,29 +33,33 @@ def init_db():
 # تهيئة قاعدة البيانات عند بدء التطبيق
 init_db()
 
-# مسار الصفحة الرئيسية
+# مسارات الصفحات الأساسية
 @app.route('/')
 def home_page():
     return render_template('index.html')
 
-# مسار صفحة تسجيل الدخول
 @app.route('/login')
 def login_page():
     return render_template('login.html')
 
-# مسار صفحة إنشاء حساب
 @app.route('/register')
 def register_page():
     return render_template('register.html')
 
-# مسار صفحة أداة الذكاء الاصطناعي
 @app.route('/ai_tool')
 def ai_tool_page():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
     return render_template('ai_tool.html')
 
-# مسار واجهة برمجة تطبيقات تسجيل الدخول
+# مسار جديد لصفحة الطلاب
+@app.route('/students_tool')
+def students_tool_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    return render_template('students_tool.html')
+
+# مسارات واجهات برمجة التطبيقات (API)
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.json
@@ -74,7 +78,6 @@ def api_login():
     else:
         return jsonify({'message': 'اسم المستخدم أو كلمة المرور غير صحيحة.'}), 401
 
-# مسار واجهة برمجة تطبيقات إنشاء الحساب
 @app.route('/api/register', methods=['POST'])
 def api_register():
     data = request.json
@@ -95,12 +98,11 @@ def api_register():
     finally:
         conn.close()
 
-# مسار واجهة برمجة تطبيقات توليد النص بالذكاء الاصطناعي
 @app.route('/api/generate', methods=['POST'])
 def api_generate():
     if 'user_id' not in session:
         return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
-
+    
     data = request.json
     prompt = data.get('prompt')
 
@@ -108,10 +110,102 @@ def api_generate():
         return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
 
     try:
-        response = model.generate_content(prompt)
-        return jsonify({'response': response.text}), 200
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return jsonify({'response': response.choices[0].message.content.strip()}), 200
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
+
+# مسار جديد لتلخيص الكتب
+@app.route('/api/summarize_book', methods=['POST'])
+def api_summarize_book():
+    if 'user_id' not in session:
+        return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
+    
+    data = request.json
+    book_text = data.get('book_text')
+
+    if not book_text:
+        return jsonify({'message': 'الرجاء تقديم نص الكتاب للتلخيص.'}), 400
+
+    try:
+        prompt = f"قم بتلخيص هذا الكتاب بشكل موجز: {book_text}"
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return jsonify({'response': response.choices[0].message.content.strip()}), 200
+    except Exception as e:
+        return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
+
+# مسار جديد لإنشاء اختبار
+@app.route('/api/create_test', methods=['POST'])
+def api_create_test():
+    if 'user_id' not in session:
+        return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
+    
+    data = request.json
+    content = data.get('content')
+
+    if not content:
+        return jsonify({'message': 'الرجاء تقديم محتوى لإنشاء الاختبار.'}), 400
+
+    try:
+        prompt = f"بناءً على المحتوى التالي، قم بإنشاء اختبار يتكون من 5 أسئلة اختيار من متعدد مع الإجابات الصحيحة: {content}"
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return jsonify({'response': response.choices[0].message.content.strip()}), 200
+    except Exception as e:
+        return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
+
+# مسار جديد لرفع وتلخيص الملفات
+@app.route('/api/upload_and_summarize', methods=['POST'])
+def api_upload_and_summarize():
+    if 'user_id' not in session:
+        return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
+    
+    if 'file' not in request.files:
+        return jsonify({'message': 'لم يتم العثور على ملف في الطلب.'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': 'لم يتم اختيار ملف.'}), 400
+
+    if file:
+        file_path = os.path.join(app.root_path, file.filename)
+        file.save(file_path)
+        
+        try:
+            # قراءة النص من ملف PDF باستخدام PyMuPDF
+            doc = fitz.open(file_path)
+            file_text = ""
+            for page in doc:
+                file_text += page.get_text()
+            
+            # إرسال النص للتلخيص
+            prompt = f"قم بتلخيص المحتوى التالي: {file_text}"
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            os.remove(file_path) # حذف الملف بعد المعالجة
+            return jsonify({'response': response.choices[0].message.content.strip()}), 200
+        except Exception as e:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            return jsonify({'message': f'حدث خطأ في معالجة الملف أو طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.getenv('PORT'))
