@@ -29,9 +29,7 @@ def init_db():
             id INTEGER PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            is_verified INTEGER DEFAULT 0,
-            verification_token TEXT UNIQUE
+            password TEXT NOT NULL
         )
     ''')
     conn.commit()
@@ -59,7 +57,6 @@ def ai_tool_page():
         return redirect(url_for('login_page'))
     return render_template('ai_tool.html')
 
-# مسار جديد لصفحة الطلاب
 @app.route('/students_tool')
 def students_tool_page():
     if 'user_id' not in session:
@@ -75,18 +72,29 @@ def api_login():
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, password, is_verified FROM users WHERE username = ?', (username,))
+    cursor.execute('SELECT id, password FROM users WHERE username = ?', (username,))
     user = cursor.fetchone()
     conn.close()
 
     if user and hashlib.sha256(password.encode()).hexdigest() == user[1]:
-        if user[2] == 1:
-            session['user_id'] = user[0]
-            return jsonify({'message': 'تم تسجيل الدخول بنجاح!'}), 200
-        else:
-            return jsonify({'message': 'حسابك غير مفعل. يرجى التحقق من بريدك الإلكتروني.'}), 401
+        session['user_id'] = user[0]
+        return jsonify({'message': 'تم تسجيل الدخول بنجاح!'}), 200
     else:
         return jsonify({'message': 'اسم المستخدم أو كلمة المرور غير صحيحة.'}), 401
+
+@app.route('/api/get_challenge', methods=['GET'])
+def get_challenge():
+    prompts = [
+        "اكتب جملة شعرية عن غروب الشمس.",
+        "اذكر ثلاثة أشياء غريبة يمكنك أن تفعلها بملعقة.",
+        "تخيل أنك كائن فضائي يصف أول زيارة للأرض. ماذا ترى؟",
+        "أكمل الجملة: كان لدى القطة السوداء سرٌ غامض وهو...",
+        "إذا كانت الألوان لها روائح، فما هي رائحة اللون الأزرق؟"
+    ]
+    challenge = genai.GenerativeModel('gemini-1.5-flash-latest').generate_content(
+        f"قم بإنشاء تحدي فريد للمستخدم ليتأكد من أنه إنسان. قم بتقديم تحدي إبداعي أو سؤال غير متوقع. اجعل الإجابة تتطلب تفكيرًا بشريًا. اختر من الأفكار التالية: {', '.join(prompts)}. قدم تحدي واحد فقط. اجعل الرد قصيراً ومباشراً."
+    ).text
+    return jsonify({'challenge': challenge}), 200
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
@@ -94,49 +102,44 @@ def api_register():
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
+    challenge = data.get('challenge')
+    user_answer = data.get('user_answer')
+
+    # التحقق من إجابة المستخدم باستخدام الذكاء الاصطناعي
+    verification_prompt = f"السؤال: '{challenge}'. إجابة المستخدم: '{user_answer}'. هل هذه الإجابة معقولة وذات صلة بالسؤال؟ أجب بكلمة 'نعم' أو 'لا' فقط."
+
+    try:
+        ai_response = genai.GenerativeModel('gemini-1.5-flash-latest').generate_content(verification_prompt).text
+        if "نعم" not in ai_response.strip().lower():
+            return jsonify({'message': 'إجابتك لم تكن مقنعة. يرجى المحاولة مرة أخرى.'}), 400
+    except Exception as e:
+        return jsonify({'message': 'حدث خطأ في التحقق من الإجابة. يرجى المحاولة مرة أخرى.'}), 500
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
     try:
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        verification_token = str(uuid.uuid4())
-        cursor.execute('INSERT INTO users (username, email, password, is_verified, verification_token) VALUES (?, ?, ?, 0, ?)', (username, email, hashed_password, verification_token))
+        cursor.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', (username, email, hashed_password))
         conn.commit()
-        return jsonify({'message': 'تم إنشاء الحساب بنجاح. يرجى تفعيله.'}), 201
+        return jsonify({'message': 'تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.'}), 201
     except sqlite3.IntegrityError:
         return jsonify({'message': 'اسم المستخدم أو البريد الإلكتروني موجودان بالفعل.'}), 409
     finally:
         conn.close()
 
-# مسار جديد لتفعيل الحساب (لأغراض الاختبار)
-@app.route('/verify/<token>')
-def verify_account(token):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute('UPDATE users SET is_verified = 1, verification_token = NULL WHERE verification_token = ?', (token,))
-    conn.commit()
-    rows_affected = cursor.rowcount
-    conn.close()
-    
-    if rows_affected > 0:
-        return "تم تفعيل حسابك بنجاح! يمكنك الآن تسجيل الدخول."
-    else:
-        return "رمز التفعيل غير صالح أو انتهت صلاحيته."
-
-# مسار واجهة برمجة تطبيقات توليد النص بالذكاء الاصطناعي
+# مسارات الذكاء الاصطناعي الأخرى
 @app.route('/api/generate', methods=['POST'])
 def api_generate():
     if 'user_id' not in session:
         return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
-    
+
     data = request.json
     prompt = data.get('prompt')
 
     if not prompt:
         return jsonify({'message': 'الرجاء تقديم مطالبة.'}), 400
 
-    # استخدام نموذج OpenAI
     try:
         response = openai_client.chat.completions.create(
             model="gpt-4o",
@@ -148,12 +151,11 @@ def api_generate():
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
-# مسار جديد لتلخيص الكتب
 @app.route('/api/summarize_book', methods=['POST'])
 def api_summarize_book():
     if 'user_id' not in session:
         return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
-    
+
     data = request.json
     book_text = data.get('book_text')
 
@@ -172,12 +174,11 @@ def api_summarize_book():
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
-# مسار جديد لإنشاء اختبار
 @app.route('/api/create_test', methods=['POST'])
 def api_create_test():
     if 'user_id' not in session:
         return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
-    
+
     data = request.json
     content = data.get('content')
 
@@ -196,12 +197,11 @@ def api_create_test():
     except Exception as e:
         return jsonify({'message': f'حدث خطأ في طلب الذكاء الاصطناعي: {str(e)}'}), 500
 
-# مسار جديد يسمح بالاختيار بين النموذجين
 @app.route('/api/generate_multi', methods=['POST'])
 def api_generate_multi():
     if 'user_id' not in session:
         return jsonify({'message': 'غير مصرح لك. يرجى تسجيل الدخول.'}), 401
-    
+
     data = request.json
     prompt = data.get('prompt')
     model_choice = data.get('model_choice', 'openai') # الافتراضي هو openai
